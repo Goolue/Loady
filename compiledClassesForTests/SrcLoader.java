@@ -1,5 +1,6 @@
-import javax.tools.JavaCompiler;
-import javax.tools.ToolProvider;
+import com.sun.org.apache.xalan.internal.xsltc.compiler.CompilerException;
+
+import javax.tools.*;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -9,6 +10,7 @@ import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.List;
 import java.util.function.Predicate;
@@ -25,7 +27,7 @@ public class SrcLoader {
     {
         Path path = Paths.get(pathStr);
 //        File file = new File(path.toAbsolutePath().toUri());
-        Class toReturn = null
+        Class toReturn = null;
         try
         {
             URL[] urls = {path.toAbsolutePath().toUri().toURL()};
@@ -41,36 +43,50 @@ public class SrcLoader {
     }
 
     /**
-     *
-     * @param pathStr
-     * @param className
-     * @return
-     * @throws ClassNotFoundException
+     * Get a Class object by compiling and loading a '.java' file.
+     * the '.class' file created by compilation is deleted when the JVM terminates.
+     * @param pathStr a relative to absolute path to the '.java' file.
+     *             example: "some\dir\path"
+     * @param className name of the file to load, including or not including
+     *                  the '.java' suffix;
+     * @return Class object representing the class of the file {@param className}
+     * @throws CompilerException if the file to load cannot be compiled by
+     * the java compiler
+     * @throws ClassNotFoundException if the file is not a '.java' file.
      */
     public static Class loadClassFromJavaFile(String pathStr, String className)
+            throws CompilerException, ClassNotFoundException
     {
         String fileName;
+        Class toReturn = null;
+
         if (className.endsWith(".java"))
         {
             fileName = className;
             className = className.substring(0, className.length() - 5);
         }
+        else if (className.contains("."))
+        {
+            throw new ClassNotFoundException("the file is not a '.java' file");
+        }
         else
         {
             fileName = className + ".java";
         }
-        compile(pathStr, fileName);
-
-        Class toReturn = null;
         try
         {
-            toReturn = loadClassFromFile(pathStr, className);
-        } catch (ClassNotFoundException e)
-        {
-            e.printStackTrace();
+            boolean compilationSuccess = compile(pathStr + fileName);
+            if (compilationSuccess)
+            {
+                toReturn = loadClassFromFile(pathStr, className);
+                deleteClassFileOnExit(pathStr, className + ".class");
+            }
+            else
+            {
+                throw new CompilerException("Unable to compile the file " + fileName);
+            }
         }
-
-        deleteClassFileOnExit(pathStr, className + ".class");
+        catch (IOException ignored) { }
 
         return toReturn;
     }
@@ -81,11 +97,17 @@ public class SrcLoader {
         classFile.deleteOnExit();
     }
 
-    private static void compile(String pathStr, String fileName)
+    private static boolean compile(String pathStr) throws IOException
     {
-        Path path = Paths.get(pathStr + "\\" + fileName);
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        compiler.run(null, null, null, path.toAbsolutePath().toString());
+        DiagnosticCollector<JavaFileObject> diagnosticsCollector = new DiagnosticCollector<>();
+        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnosticsCollector, null, null);
+        Iterable<? extends JavaFileObject> compilationUnits = fileManager
+                .getJavaFileObjectsFromStrings(Collections.singletonList(pathStr));
+        JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnosticsCollector, null, null, compilationUnits);
+        boolean success = task.call();
+        fileManager.close();
+        return success;
     }
 
     public static  List<Class> loadClassesFromJar(String path) throws ClassNotFoundException, FileNotFoundException

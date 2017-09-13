@@ -75,7 +75,7 @@ public class SrcLoader {
         }
         try
         {
-            boolean compilationSuccess = compile(pathStr + fileName);
+            boolean compilationSuccess = compile(pathStr + "\\" + fileName);
             if (compilationSuccess)
             {
                 toReturn = loadClassFromFile(pathStr, className);

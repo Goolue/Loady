@@ -144,4 +144,18 @@ public class SrcLoaderTest {
         Assert.assertTrue(!results.isEmpty());
     }
 
+    @org.junit.Test
+    public void loadClassFromJavaFileMotNull() throws Exception
+    {
+        Class javaFileResult = SrcLoader.loadClassFromJavaFile("compiledClassesForTests", "SrcLoader");
+        Assert.assertNotNull(javaFileResult);
+    }
+
+    @org.junit.Test
+    public void loadClassFromJavaFileCorrectClass() throws Exception
+    {
+        Class javaFileResult = SrcLoader.loadClassFromJavaFile("compiledClassesForTests", "SrcLoader");
+        Assert.assertEquals(javaFileResult.getName(), "SrcLoader");
+    }
+
 }
