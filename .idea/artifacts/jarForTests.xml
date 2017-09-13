@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="jarForTests">
+    <output-path>$PROJECT_DIR$/compiledClassesForTests/</output-path>
+    <root id="archive" name="jarForTests.jar">
+      <element id="file-copy" path="$PROJECT_DIR$/compiledClassesForTests/SomeClass.class" />
+    </root>
+  </artifact>
+</component>
